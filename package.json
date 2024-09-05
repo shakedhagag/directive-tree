@@ -1,0 +1,150 @@
+{
+    "name": "directive-tree",
+    "displayName": "Directive Tree",
+    "description": "See where you use 'use server' and 'use client' directives",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.92.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [],
+    "main": "./dist/extension.js",
+    "contributes": {
+        "commands": [
+            {
+                "command": "directive-tree.scanDirectives",
+                "title": "Scan for 'use server' and 'use client' directives"
+            },
+            {
+                "command": "directive-tree.refreshDirectives",
+                "title": "Refresh directives scan"
+            },
+            {
+                "command": "directive-tree.minimizeTree",
+                "title": "Collapse All",
+                "category": "Directive Tree",
+                "icon": "$(collapse-all)"
+            },
+            {
+                "command": "directive-tree.expandTree",
+                "title": "Expand All",
+                "category": "Directive Tree",
+                "icon": "$(expand-all)"
+            },
+            {
+                "command": "directive-tree.toggleItem",
+                "title": "Open folder",
+                "category": "Directive Tree",
+                "icon": "$(file-code)"
+            },
+            {
+                "command": "directive-tree.expandFolder",
+                "title": "Expand Folder"
+            },
+            {
+                "command": "directive-tree.collapseFolder",
+                "title": "Collapse Folder"
+            }
+        ],
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "directiveTreeViewContainer",
+                    "title": "DirectiveTree",
+                    "icon": "resources/container.svg"
+                }
+            ]
+        },
+        "views": {
+            "directiveTreeViewContainer": [
+                {
+                    "id": "directiveTreeView",
+                    "name": "Directive Tree"
+                }
+            ]
+        },
+        "menus": {
+            "view/item/context": [
+                {
+                    "command": "directive-tree.minimizeTree",
+                    "group": "navigation",
+                    "when": "view == directiveTreeView"
+                },
+                {
+                    "command": "directive-tree.expandTree",
+                    "group": "navigation",
+                    "when": "view == directiveTreeView"
+                },
+                {
+                    "command": "directive-tree.toggleItem",
+                    "when": "view == directiveTreeView && viewItem == file",
+                    "group": "inline"
+                }
+            ],
+            "view/title": [
+                {
+                    "command": "directive-tree.minimizeTree",
+                    "when": "view == directiveTreeView",
+                    "group": "navigation"
+                },
+                {
+                    "command": "directive-tree.expandTree",
+                    "when": "view == directiveTreeView",
+                    "group": "navigation"
+                }
+            ]
+        },
+        "configuration": {
+            "title": "Directive Tree",
+            "properties": {
+                "directiveTree.showOnStartup": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Show Directive Tree on startup"
+                },
+                "directive-tree.tree.buttons.minimize": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Show the minimize button in the directive tree view."
+                }
+            }
+        }
+    },
+    "scripts": {
+        "vscode:prepublish": "pnpm run package",
+        "compile": "webpack",
+        "watch": "webpack --watch",
+        "package": "webpack --mode production --devtool hidden-source-map",
+        "compile-tests": "tsc -p . --outDir out",
+        "watch-tests": "tsc -p . -w --outDir out",
+        "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
+        "lint": "eslint src --ext ts",
+        "test": "vscode-test"
+    },
+    "devDependencies": {
+        "@types/find": "^0.2.4",
+        "@types/micromatch": "^4.0.9",
+        "@types/mocha": "^10.0.7",
+        "@types/node": "20.x",
+        "@types/vscode": "^1.92.0",
+        "@typescript-eslint/eslint-plugin": "^7.14.1",
+        "@typescript-eslint/parser": "^7.11.0",
+        "@vscode/test-cli": "^0.0.9",
+        "@vscode/test-electron": "^2.4.0",
+        "eslint": "^8.57.0",
+        "ts-loader": "^9.5.1",
+        "typescript": "^5.4.5",
+        "webpack": "^5.92.1",
+        "webpack-cli": "^5.1.4"
+    },
+    "dependencies": {
+        "@vscode/ripgrep": "^1.15.9",
+        "comment-patterns": "^0.12.2",
+        "fast-strftime": "^1.1.1",
+        "find": "^0.3.0",
+        "micromatch": "^4.0.8",
+        "octicons": "link:@types/primer/octicons"
+    }
+}
