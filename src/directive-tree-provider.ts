@@ -29,6 +29,44 @@ export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveT
         return element;
     }
 
+    private async scanReferencesForFile(fileItem: FileTreeItem): Promise<ExportedFunctionItem[]> {
+        const document = await vscode.workspace.openTextDocument(fileItem.result.uri);
+        const sourceFile = ts.createSourceFile(
+            fileItem.result.uri.fsPath,
+            document.getText(),
+            ts.ScriptTarget.Latest,
+            true
+        );
+
+        const exportedFunctions = await this.parseFileForExportedFunctions(fileItem.result.uri);
+
+        // Find references for each exported function
+        const functionItems: ExportedFunctionItem[] = [];
+        for (const func of exportedFunctions) {
+            const references = await this.findReferencesForFunction(func, document);
+            const isUnused = references.length <= 1; // Consider function unused if it only has its own declaration as a reference
+            functionItems.push(new ExportedFunctionItem(func.label, func.range, func.uri, isUnused));
+        }
+
+        // Update the file item's children
+        fileItem.children = functionItems;
+
+        // Trigger a refresh for this specific file item
+        this._onDidChangeTreeData.fire(fileItem);
+
+        return functionItems;
+    }
+
+    private async findReferencesForFunction(functionItem: ExportedFunctionItem, document: vscode.TextDocument): Promise<vscode.Location[]> {
+        const references = await vscode.commands.executeCommand<vscode.Location[]>(
+            'vscode.executeReferenceProvider',
+            functionItem.uri,
+            functionItem.range.start
+        );
+
+        return references || [];
+    }
+
     async getChildren(element?: DirectiveTreeItem): Promise<DirectiveTreeItem[]> {
         if (!element) {
             // Root level - return categories
@@ -42,6 +80,9 @@ export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveT
         } else if (element instanceof FolderTreeItem) {
             return element.children;
         } else if (element instanceof FileTreeItem) {
+            // Scan for references when expanding a file item
+            console.log("SCANNING");
+            await this.scanReferencesForFile(element);
             return element.children;
         } else {
             return [];
@@ -172,20 +213,35 @@ export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveT
 
         const visit = (node: ts.Node) => {
             if (ts.isFunctionDeclaration(node) && node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)) {
-                const range = new vscode.Range(
-                    document.positionAt(node.getStart()),
-                    document.positionAt(node.getEnd())
-                );
-                const functionName = node.name?.text || 'Anonymous';
-                const fullyQualifiedName = this.getFullyQualifiedName(uri, functionName);
-                const isUnused = this.unusedFunctions.has(fullyQualifiedName);
-                exportedFunctions.push(new ExportedFunctionItem(functionName, range, uri, isUnused));
+                this.addExportedFunction(node, node.name?.text, document, uri, exportedFunctions);
+            } else if (ts.isVariableStatement(node) && node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)) {
+                node.declarationList.declarations.forEach((declaration: ts.VariableDeclaration) => {
+                    if (ts.isVariableDeclaration(declaration) &&
+                        (ts.isArrowFunction(declaration.initializer!) || ts.isFunctionExpression(declaration.initializer!))) {
+                        this.addExportedFunction(declaration, declaration.name.getText(), document, uri, exportedFunctions);
+                    }
+                });
             }
             ts.forEachChild(node, visit);
         };
 
         visit(sourceFile);
         return exportedFunctions;
+    }
+
+    private addExportedFunction(
+        node: ts.Node,
+        functionName: string | undefined,
+        document: vscode.TextDocument,
+        uri: vscode.Uri,
+        exportedFunctions: ExportedFunctionItem[]
+    ) {
+        const range = new vscode.Range(
+            document.positionAt(node.getStart()),
+            document.positionAt(node.getEnd())
+        );
+        const name = functionName || 'Anonymous';
+        exportedFunctions.push(new ExportedFunctionItem(name, range, uri, false));
     }
 
 

@@ -34,7 +34,7 @@ export class FileTreeItem extends vscode.TreeItem {
     constructor(
         public readonly label: string,
         public readonly result: DirectiveResult,
-        public readonly children: ExportedFunctionItem[],
+        public children: ExportedFunctionItem[],
         private context: vscode.ExtensionContext
     ) {
         super(label, vscode.TreeItemCollapsibleState.Collapsed);
