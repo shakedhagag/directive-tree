@@ -14,17 +14,13 @@ const iconMap: { [key: string]: string } = {
 export function getIcon(fileExtension: string, context: vscode.ExtensionContext) {
     try {
         const iconName = iconMap[fileExtension] || 'file';
-        console.log('iconName:', iconName);
-
         // Check if we have a custom icon for this file type
         if (iconName !== 'file') {
             const iconPath = context.asAbsolutePath(path.join('resources', `${iconName}.svg`));
-            console.log('Using custom icon:', iconPath);
             return iconPath;
         }
 
         // Fallback to VSCode's built-in file icon
-        console.log('Using default file icon');
         return new vscode.ThemeIcon('file');
     } catch (error) {
         console.error('Error in getIcon function:', error);
@@ -43,7 +39,6 @@ export function getFolderIcon(folderName: string, isExpanded: boolean, context: 
             return iconPath;
         }
 
-        console.log('Using default folder icon');
         return new vscode.ThemeIcon(isExpanded ? 'folder-opened' : 'folder');
     } catch (error) {
         console.error('Error in getFolderIcon function:', error);

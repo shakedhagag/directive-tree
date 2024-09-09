@@ -15,19 +15,15 @@ export function registerCommandsAndHandlers(
 ) {
     context.subscriptions.push(
         vscode.commands.registerCommand('directive-tree.scanDirectives', () => {
-            console.log('directive-tree.scanDirectives command triggered');
             scanWorkspace();
         }),
         vscode.commands.registerCommand('directive-tree.refreshDirectives', () => {
-            console.log('directive-tree.refreshDirectives command triggered');
             refreshFile(vscode.window.activeTextEditor?.document);
         }),
         vscode.commands.registerCommand('directive-tree.minimizeTree', () => {
-            console.log('directive-tree.minimizeTree command triggered');
             treeDataProvider.collapseAll();
         }),
         vscode.commands.registerCommand('directive-tree.expandTree', () => {
-            console.log('directive-tree.expandTree command triggered');
             treeDataProvider.expandAll();
         }),
         vscode.commands.registerCommand('directive-tree.findReferences', (functionItem: ExportedFunctionItem) => {
@@ -36,7 +32,6 @@ export function registerCommandsAndHandlers(
         vscode.workspace.onDidSaveTextDocument(onDocumentSave),
         vscode.workspace.onDidChangeConfiguration(onConfigurationChange),
         vscode.commands.registerCommand('directive-tree.toggleItem', (item: DirectiveTreeItem) => {
-            console.log('directive-tree.toggleItem command triggered');
             treeDataProvider.toggleItem(item);
         }),
         directiveTreeView.onDidChangeSelection(selection => {

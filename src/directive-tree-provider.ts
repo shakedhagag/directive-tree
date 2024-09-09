@@ -81,7 +81,6 @@ export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveT
             return element.children;
         } else if (element instanceof FileTreeItem) {
             // Scan for references when expanding a file item
-            console.log("SCANNING");
             await this.scanReferencesForFile(element);
             return element.children;
         } else {
@@ -326,7 +325,6 @@ export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveT
                     functionUri,
                     functionItem.range.start
                 );
-                console.log("REFS", references);
 
                 if (references && references.length > 0) {
                     // Check if the only reference is the declaration itself

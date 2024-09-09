@@ -38,7 +38,6 @@ export function activate(context: vscode.ExtensionContext) {
         onConfigurationChange
     );
     scanWorkspace().then(() => {
-        console.log('Initial workspace scan completed');
         treeDataProvider.expandAll();
     }).catch(error => {
         console.error('Error during initial workspace scan:', error);
@@ -91,9 +90,8 @@ async function scanFolder(folderPath: string): Promise<void> {
 
 function search(options: { regex: string, globs?: string[], additional?: string, filename: string }): Promise<void> {
     return new Promise((resolve, reject) => {
-        console.log("Searching " + options.filename + "...");
 
-        const rgPath = 'rg'; // Assumes 'rg' is in PATH. Adjust if needed.
+        const rgPath = 'rg';
         const args = [
             '--no-messages',
             '--vimgrep',
