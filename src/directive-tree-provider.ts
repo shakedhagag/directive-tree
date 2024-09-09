@@ -270,20 +270,42 @@ export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveT
                     functionUri,
                     functionItem.range.start
                 );
+                console.log("REFS", references);
 
                 if (references && references.length > 0) {
-                    this.showReferencesQuickPick(functionName, references);
-                    // Update unused status
-                    const fullyQualifiedName = this.getFullyQualifiedName(functionUri, functionName);
-                    this.unusedFunctions.delete(fullyQualifiedName);
-                    this._onDidChangeTreeData.fire();
+                    // Check if the only reference is the declaration itself
+                    if (references.length === 1) {
+
+                        vscode.window.showInformationMessage(`No references found for ${functionName} other than its declaration.`);
+                        // Update unused status
+                        const fullyQualifiedName = this.getFullyQualifiedName(functionUri, functionName);
+                        this.unusedFunctions.add(fullyQualifiedName);
+                    } else {
+                        // Filter out the declaration itself for display
+                        const externalReferences = references.filter(ref =>
+                            !(ref.uri.fsPath === functionUri.fsPath && ref.range.isEqual(functionItem.range))
+                        );
+
+                        if (externalReferences.length > 0) {
+                            this.showReferencesQuickPick(functionName, externalReferences);
+                            // Update unused status
+                            const fullyQualifiedName = this.getFullyQualifiedName(functionUri, functionName);
+                            this.unusedFunctions.delete(fullyQualifiedName);
+                        } else {
+                            vscode.window.showInformationMessage(`No external references found for ${functionName}.`);
+                            // Update unused status
+                            const fullyQualifiedName = this.getFullyQualifiedName(functionUri, functionName);
+                            this.unusedFunctions.add(fullyQualifiedName);
+                        }
+                    }
                 } else {
                     vscode.window.showInformationMessage(`No references found for ${functionName}`);
                     // Update unused status
                     const fullyQualifiedName = this.getFullyQualifiedName(functionUri, functionName);
                     this.unusedFunctions.add(fullyQualifiedName);
-                    this._onDidChangeTreeData.fire();
                 }
+
+                this._onDidChangeTreeData.fire();
             } catch (error) {
                 vscode.window.showErrorMessage(`Error finding references: ${error}`);
             }
