@@ -2,7 +2,9 @@ import * as micromatch from 'micromatch';
 import * as os from 'os';
 import * as path from 'path';
 import * as find from 'find';
+// @ts-ignore
 import strftime from 'fast-strftime';
+// @ts-ignore
 import commentPatterns from 'comment-patterns';
 import * as vscode from 'vscode';
 

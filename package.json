@@ -1,8 +1,12 @@
 {
     "name": "directive-tree",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/shakedhagag/directive-tree"
+    },
     "displayName": "Directive Tree",
     "description": "See where you use 'use server' and 'use client' directives",
-    "version": "0.0.1",
+    "version": "0.2.0",
     "engines": {
         "vscode": "^1.92.0"
     },
@@ -130,7 +134,9 @@
         "watch-tests": "tsc -p . -w --outDir out",
         "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
         "lint": "eslint src --ext ts",
-        "test": "vscode-test"
+        "test": "vscode-test",
+        "post-package": "pnpm vsce package --no-dependencies",
+        "publish": "pnpm vsce publish --no-dependencies"
     },
     "devDependencies": {
         "@types/find": "^0.2.4",
