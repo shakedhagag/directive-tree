@@ -1,8 +1,8 @@
 import type { Uri } from "vscode";
 
-import { CategoryTreeItem, FolderTreeItem, FileTreeItem } from "./tree-items";
+import { CategoryTreeItem, FolderTreeItem, FileTreeItem, ExportedFunctionItem } from "./tree-items";
 
-export type DirectiveTreeItem = CategoryTreeItem | FolderTreeItem | FileTreeItem;
+export type DirectiveTreeItem = CategoryTreeItem | FolderTreeItem | FileTreeItem | ExportedFunctionItem;
 
 export interface DirectiveResult {
     uri: Uri;

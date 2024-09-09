@@ -34,9 +34,10 @@ export class FileTreeItem extends vscode.TreeItem {
     constructor(
         public readonly label: string,
         public readonly result: DirectiveResult,
+        public readonly children: ExportedFunctionItem[],
         private context: vscode.ExtensionContext
     ) {
-        super(label, vscode.TreeItemCollapsibleState.None);
+        super(label, vscode.TreeItemCollapsibleState.Collapsed);
 
         const fileName = path.basename(this.result.uri.fsPath);
         const fileExtension = path.extname(fileName).slice(1).toLowerCase();
@@ -50,6 +51,22 @@ export class FileTreeItem extends vscode.TreeItem {
             command: 'vscode.open',
             title: 'Open File',
             arguments: [this.result.uri, { selection: new vscode.Range(this.result.line - 1, this.result.column - 1, this.result.line - 1, this.result.column + this.result.directive.length) }]
+        };
+    }
+}
+
+export class ExportedFunctionItem extends vscode.TreeItem {
+    constructor(
+        public readonly label: string,
+        public readonly range: vscode.Range,
+        public readonly uri: vscode.Uri
+    ) {
+        super(label, vscode.TreeItemCollapsibleState.None);
+        this.iconPath = new vscode.ThemeIcon('symbol-method');
+        this.command = {
+            command: 'vscode.open',
+            title: 'Go to Function',
+            arguments: [uri, { selection: range }]
         };
     }
 }

@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { DirectiveResult, DirectiveTreeItem } from './types';
-import { CategoryTreeItem, FolderTreeItem, FileTreeItem } from './tree-items';
+import { CategoryTreeItem, FolderTreeItem, FileTreeItem, ExportedFunctionItem } from './tree-items';
+import * as ts from 'typescript';
 
 export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveTreeItem> {
     private expandedNodes: Set<string> = new Set();
@@ -38,29 +39,57 @@ export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveT
     }
 
 
-    getChildren(element?: DirectiveTreeItem): Thenable<DirectiveTreeItem[]> {
+    private async parseFileForExportedFunctions(uri: vscode.Uri): Promise<ExportedFunctionItem[]> {
+        const document = await vscode.workspace.openTextDocument(uri);
+        const sourceFile = ts.createSourceFile(
+            uri.fsPath,
+            document.getText(),
+            ts.ScriptTarget.Latest,
+            true
+        );
+
+        const exportedFunctions: ExportedFunctionItem[] = [];
+
+        const visit = (node: ts.Node) => {
+            if (ts.isFunctionDeclaration(node) && node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)) {
+                const range = new vscode.Range(
+                    document.positionAt(node.getStart()),
+                    document.positionAt(node.getEnd())
+                );
+                exportedFunctions.push(new ExportedFunctionItem(node.name?.text || 'Anonymous', range, uri));
+            }
+            ts.forEachChild(node, visit);
+        };
+
+        visit(sourceFile);
+        return exportedFunctions;
+    }
+
+    async getChildren(element?: DirectiveTreeItem): Promise<DirectiveTreeItem[]> {
         if (!element) {
             // Root level - return categories
-            return Promise.resolve([
+            return [
                 new CategoryTreeItem('use client', 'use-client', vscode.TreeItemCollapsibleState.Collapsed),
                 new CategoryTreeItem('use server', 'use-server', vscode.TreeItemCollapsibleState.Collapsed)
-            ]);
+            ];
         } else if (element instanceof CategoryTreeItem) {
             const categoryResults = this.results.filter(r => r.directive === element.label);
-            return Promise.resolve(this.buildFolderStructure(categoryResults, element.id));
+            return this.buildFolderStructure(categoryResults, element.id);
         } else if (element instanceof FolderTreeItem) {
-            return Promise.resolve(element.children);
+            return element.children;
+        } else if (element instanceof FileTreeItem) {
+            return element.children;
         } else {
-            return Promise.resolve([]);
+            return [];
         }
     }
 
 
-    private buildFolderStructure(results: DirectiveResult[], parentId: string): DirectiveTreeItem[] {
+    private async buildFolderStructure(results: DirectiveResult[], parentId: string): Promise<DirectiveTreeItem[]> {
         const folders: Map<string, FolderTreeItem> = new Map();
         const rootItems: DirectiveTreeItem[] = [];
 
-        results.forEach(result => {
+        for (const result of results) {
             const workspaceFolder = vscode.workspace.getWorkspaceFolder(result.uri);
             if (workspaceFolder) {
                 const relativePath = path.relative(workspaceFolder.uri.fsPath, path.dirname(result.uri.fsPath));
@@ -106,11 +135,12 @@ export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveT
 
                 if (currentFolder) {
                     const fileName = path.basename(result.uri.fsPath);
-                    const fileItem = new FileTreeItem(`${fileName}:${result.line}`, result, this.context);
+                    const exportedFunctions = await this.parseFileForExportedFunctions(result.uri);
+                    const fileItem = new FileTreeItem(`${fileName}:${result.line}`, result, exportedFunctions, this.context);
                     currentFolder.children.push(fileItem);
                 }
             }
-        });
+        }
 
         return rootItems;
     }
