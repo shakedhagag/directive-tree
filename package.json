@@ -1,5 +1,6 @@
 {
     "name": "directive-tree",
+    "publisher": "shagag",
     "repository": {
         "type": "git",
         "url": "https://github.com/shakedhagag/directive-tree"
