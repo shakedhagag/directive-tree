@@ -5,9 +5,10 @@
         "type": "git",
         "url": "https://github.com/shakedhagag/directive-tree"
     },
+    "icon": "resources/icon.png",
     "displayName": "Directive Tree",
     "description": "See where you use 'use server' and 'use client' directives",
-    "version": "0.2.1",
+    "version": "0.2.2",
     "engines": {
         "vscode": "^1.92.0"
     },
