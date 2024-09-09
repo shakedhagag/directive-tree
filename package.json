@@ -46,6 +46,10 @@
             {
                 "command": "directive-tree.collapseFolder",
                 "title": "Collapse Folder"
+            },
+            {
+                "command": "directive-tree.findReferences",
+                "title": "Find References"
             }
         ],
         "viewsContainers": {
@@ -80,6 +84,11 @@
                 {
                     "command": "directive-tree.toggleItem",
                     "when": "view == directiveTreeView && viewItem == file",
+                    "group": "inline"
+                },
+                {
+                    "command": "directive-tree.findReferences",
+                    "when": "view == directiveTreeView && viewItem == exportedFunction",
                     "group": "inline"
                 }
             ],

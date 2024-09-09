@@ -11,7 +11,16 @@ let statusBarItem: vscode.StatusBarItem;
 let results: DirectiveResult[] = [];
 
 export function activate(context: vscode.ExtensionContext) {
-    treeDataProvider = new DirectiveTreeProvider(results, context);
+    const workspaceRoot = vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0
+        ? vscode.workspace.workspaceFolders[0].uri.fsPath
+        : undefined;
+
+    if (!workspaceRoot) {
+        vscode.window.showErrorMessage("No workspace folder open. The Directive Tree extension requires a workspace folder to function.");
+        return;
+    }
+
+    treeDataProvider = new DirectiveTreeProvider(results, context, workspaceRoot);
     directiveTreeView = vscode.window.createTreeView('directiveTreeView', {
         treeDataProvider: treeDataProvider
     });
@@ -41,7 +50,7 @@ export function deactivate() {
     // Clean up resources if needed
 }
 
-export async function scanWorkspace(): Promise<void> {
+async function scanWorkspace(): Promise<void> {
     results = [];
     statusBarItem.text = "$(search) Scanning for 'use server' and 'use client'...";
 
@@ -65,7 +74,7 @@ export async function scanWorkspace(): Promise<void> {
     }
 }
 
-export async function scanFolder(folderPath: string): Promise<void> {
+async function scanFolder(folderPath: string): Promise<void> {
     const options = {
         regex: '"use server"|"use client"',
         globs: ['!**/node_modules/**', '*.{js,ts,jsx,tsx}'],
@@ -138,7 +147,7 @@ function search(options: { regex: string, globs?: string[], additional?: string,
     });
 }
 
-export async function refreshFile(document: vscode.TextDocument | undefined): Promise<void> {
+async function refreshFile(document: vscode.TextDocument | undefined): Promise<void> {
     if (document) {
         results = results.filter(result => result.uri.fsPath !== document.uri.fsPath);
 

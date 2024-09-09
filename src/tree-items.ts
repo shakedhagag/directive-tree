@@ -59,14 +59,17 @@ export class ExportedFunctionItem extends vscode.TreeItem {
     constructor(
         public readonly label: string,
         public readonly range: vscode.Range,
-        public readonly uri: vscode.Uri
+        public readonly uri: vscode.Uri,
+        public readonly isUnused: boolean
     ) {
         super(label, vscode.TreeItemCollapsibleState.None);
-        this.iconPath = new vscode.ThemeIcon('symbol-method');
+        this.iconPath = new vscode.ThemeIcon(isUnused ? 'warning' : 'symbol-method');
+        this.description = isUnused ? '(unused)' : '';
         this.command = {
             command: 'vscode.open',
             title: 'Go to Function',
             arguments: [uri, { selection: range }]
         };
+        this.contextValue = 'exportedFunction';
     }
 }

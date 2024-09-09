@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { CategoryTreeItem, FolderTreeItem } from './tree-items';
+import { CategoryTreeItem, FolderTreeItem, ExportedFunctionItem } from './tree-items';
 import { DirectiveTreeProvider } from './directive-tree-provider';
 import { DirectiveTreeItem } from './types';
 
@@ -29,6 +29,9 @@ export function registerCommandsAndHandlers(
         vscode.commands.registerCommand('directive-tree.expandTree', () => {
             console.log('directive-tree.expandTree command triggered');
             treeDataProvider.expandAll();
+        }),
+        vscode.commands.registerCommand('directive-tree.findReferences', (functionItem: ExportedFunctionItem) => {
+            treeDataProvider.findReferences(functionItem);
         }),
         vscode.workspace.onDidSaveTextDocument(onDocumentSave),
         vscode.workspace.onDidChangeConfiguration(onConfigurationChange),
