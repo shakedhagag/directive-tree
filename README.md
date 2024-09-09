@@ -1,6 +1,13 @@
+<a href="https://marketplace.visualstudio.com/items?itemName=shagag.directive-tree" style="display: none;">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/shakedhagag/directive-tree/main/resources/icon.png" width="140">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/shakedhagag/directive-tree/main/resources/icon.png" width="140">
+    <img src="https://raw.githubusercontent.com/shakedhagag/directive-tree/main/resources/icon.png" alt="Logo">
+  </picture>
+</a>
+
+
 # Directive Tree VSCode Extension
-
-
 
 ## Overview
 
