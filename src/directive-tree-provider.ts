@@ -166,7 +166,6 @@ export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveT
                 const detector = new UnusedFunctionDetector(this.workspaceRoot);
                 const files = await vscode.workspace.findFiles('**/*.{js,ts,jsx,tsx}', '**/node_modules/**');
 
-                // Limit the number of files to process
                 const filesToProcess = files.slice(0, maxFilesToProcess);
 
                 let processedFiles = 0;
@@ -184,6 +183,7 @@ export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveT
                 }
 
                 this.unusedFunctions = detector.getUnusedFunctions();
+                this.updateUnusedStatus();
                 this._onDidChangeTreeData.fire();
 
                 if (processedFiles < files.length) {
@@ -199,6 +199,41 @@ export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveT
         });
     }
 
+    private async updateUnusedStatus(): Promise<void> {
+        const updateFileItem = async (item: DirectiveTreeItem) => {
+            if (item instanceof FileTreeItem) {
+                for (const child of item.children) {
+                    if (child instanceof ExportedFunctionItem) {
+                        const fullyQualifiedName = this.getFullyQualifiedName(child.uri, child.label);
+                        child.isUnused = !child.neverUnused && this.unusedFunctions.has(fullyQualifiedName);
+                        child.updateIconAndTooltip();
+                    }
+                }
+            } else if (item instanceof FolderTreeItem) {
+                for (const child of item.children) {
+                    await updateFileItem(child);
+                }
+            }
+        };
+
+        for (const result of this.results) {
+            const rootItem = await this.getChildren() as (CategoryTreeItem | undefined)[];
+            const categoryItem = rootItem.find(item =>
+                (item?.label === 'use client' && result.directive === 'use client') ||
+                (item?.label === 'use server' && result.directive === 'use server')
+            );
+
+            if (categoryItem) {
+                const categoryChildren = await this.getChildren(categoryItem);
+                for (const child of categoryChildren) {
+                    await updateFileItem(child);
+                }
+            }
+        }
+
+        this._onDidChangeTreeData.fire();
+    }
+
     private async parseFileForExportedFunctions(uri: vscode.Uri): Promise<ExportedFunctionItem[]> {
         const document = await vscode.workspace.openTextDocument(uri);
         const sourceFile = ts.createSourceFile(
@@ -209,38 +244,68 @@ export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveT
         );
 
         const exportedFunctions: ExportedFunctionItem[] = [];
+        const isUseServerFile = this.isUseServerFile(sourceFile);
+        const isTsxFile = path.extname(uri.fsPath) === '.tsx';
 
         const visit = (node: ts.Node) => {
             if (ts.isFunctionDeclaration(node) && node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)) {
-                this.addExportedFunction(node, node.name?.text, document, uri, exportedFunctions);
+                this.addExportedFunction(node, node.name?.text, document, uri, exportedFunctions, isUseServerFile && isTsxFile);
             } else if (ts.isVariableStatement(node) && node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)) {
                 node.declarationList.declarations.forEach((declaration: ts.VariableDeclaration) => {
-                    if (ts.isVariableDeclaration(declaration) &&
-                        (ts.isArrowFunction(declaration.initializer!) || ts.isFunctionExpression(declaration.initializer!))) {
-                        this.addExportedFunction(declaration, declaration.name.getText(), document, uri, exportedFunctions);
+                    if (ts.isVariableDeclaration(declaration)) {
+                        this.addExportedFunction(declaration, declaration.name.getText(), document, uri, exportedFunctions, isUseServerFile && isTsxFile);
                     }
                 });
+            } else if (ts.isExportAssignment(node)) {
+                const expression = node.expression;
+                this.addExportedFunction(expression, undefined, document, uri, exportedFunctions, isUseServerFile && isTsxFile);
             }
             ts.forEachChild(node, visit);
         };
 
         visit(sourceFile);
+
+        // For .ts files with 'use server', consider all exports as actions
+        if (isUseServerFile && path.extname(uri.fsPath) === '.ts') {
+            ts.forEachChild(sourceFile, node => {
+                if (ts.isExportDeclaration(node) || (ts.isVariableStatement(node) && node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword))) {
+                    const range = new vscode.Range(
+                        document.positionAt(node.getStart()),
+                        document.positionAt(node.getEnd())
+                    );
+                    exportedFunctions.push(new ExportedFunctionItem('Exported Action', range, uri, false));
+                }
+            });
+        }
+
         return exportedFunctions;
     }
+
 
     private addExportedFunction(
         node: ts.Node,
         functionName: string | undefined,
         document: vscode.TextDocument,
         uri: vscode.Uri,
-        exportedFunctions: ExportedFunctionItem[]
+        exportedFunctions: ExportedFunctionItem[],
+        neverUnused: boolean
     ) {
         const range = new vscode.Range(
             document.positionAt(node.getStart()),
             document.positionAt(node.getEnd())
         );
         const name = functionName || 'Anonymous';
-        exportedFunctions.push(new ExportedFunctionItem(name, range, uri, false));
+        exportedFunctions.push(new ExportedFunctionItem(name, range, uri, false, neverUnused));
+    }
+
+    private isUseServerFile(sourceFile: ts.SourceFile): boolean {
+        let isUseServer = false;
+        ts.forEachChild(sourceFile, node => {
+            if (ts.isStringLiteral(node) && node.text === 'use server') {
+                isUseServer = true;
+            }
+        });
+        return isUseServer;
     }
 
 
@@ -310,7 +375,13 @@ export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveT
         });
     }
 
-    public async findReferences(functionItem: ExportedFunctionItem): Promise<void> {
+    public async findReferences(functionItem: {
+        label: string,
+        range: vscode.Range,
+        uri: vscode.Uri,
+        isUnused: boolean,
+        neverUnused: boolean
+    }): Promise<void> {
         const functionName = functionItem.label;
         const functionUri = functionItem.uri;
 
@@ -328,38 +399,41 @@ export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveT
 
                 if (references && references.length > 0) {
                     // Check if the only reference is the declaration itself
-                    if (references.length === 1) {
-
+                    if (references.length === 1 && !functionItem.neverUnused) {
                         vscode.window.showInformationMessage(`No references found for ${functionName} other than its declaration.`);
                         // Update unused status
                         const fullyQualifiedName = this.getFullyQualifiedName(functionUri, functionName);
                         this.unusedFunctions.add(fullyQualifiedName);
+                        functionItem.isUnused = true;
                     } else {
                         // Filter out the declaration itself for display
                         const externalReferences = references.filter(ref =>
                             !(ref.uri.fsPath === functionUri.fsPath && ref.range.isEqual(functionItem.range))
                         );
 
-                        if (externalReferences.length > 0) {
+                        if (externalReferences.length > 0 || functionItem.neverUnused) {
                             this.showReferencesQuickPick(functionName, externalReferences);
                             // Update unused status
                             const fullyQualifiedName = this.getFullyQualifiedName(functionUri, functionName);
                             this.unusedFunctions.delete(fullyQualifiedName);
+                            functionItem.isUnused = false;
                         } else {
                             vscode.window.showInformationMessage(`No external references found for ${functionName}.`);
                             // Update unused status
                             const fullyQualifiedName = this.getFullyQualifiedName(functionUri, functionName);
                             this.unusedFunctions.add(fullyQualifiedName);
+                            functionItem.isUnused = true;
                         }
                     }
-                } else {
+                } else if (!functionItem.neverUnused) {
                     vscode.window.showInformationMessage(`No references found for ${functionName}`);
                     // Update unused status
                     const fullyQualifiedName = this.getFullyQualifiedName(functionUri, functionName);
                     this.unusedFunctions.add(fullyQualifiedName);
+                    functionItem.isUnused = true;
                 }
 
-                this._onDidChangeTreeData.fire();
+                this.updateUnusedStatus();
             } catch (error) {
                 vscode.window.showErrorMessage(`Error finding references: ${error}`);
             }

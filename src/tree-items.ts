@@ -60,16 +60,38 @@ export class ExportedFunctionItem extends vscode.TreeItem {
         public readonly label: string,
         public readonly range: vscode.Range,
         public readonly uri: vscode.Uri,
-        public readonly isUnused: boolean
+        public isUnused: boolean,
+        public readonly neverUnused: boolean = false
     ) {
         super(label, vscode.TreeItemCollapsibleState.None);
-        this.iconPath = new vscode.ThemeIcon(isUnused ? 'warning' : 'symbol-method');
-        this.description = isUnused ? '(unused)' : '';
-        this.command = {
-            command: 'vscode.open',
-            title: 'Go to Function',
-            arguments: [uri, { selection: range }]
-        };
         this.contextValue = 'exportedFunction';
+        this.command = this.createCommand();
+        this.updateIconAndTooltip();
+    }
+
+    updateIconAndTooltip() {
+        if (this.neverUnused) {
+            this.iconPath = new vscode.ThemeIcon('check');
+            this.tooltip = 'Server Action (always used)';
+        } else if (this.isUnused) {
+            this.iconPath = new vscode.ThemeIcon('warning');
+            this.tooltip = 'Unused function';
+        } else {
+            this.iconPath = new vscode.ThemeIcon('symbol-function');
+            this.tooltip = 'Used function';
+        }
+    }
+
+    private createCommand(): vscode.Command {
+        return {
+            command: 'vscode.open',
+            title: 'Open File',
+            arguments: [
+                this.uri,
+                {
+                    selection: this.range
+                }
+            ]
+        };
     }
 }
