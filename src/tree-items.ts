@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as icons from './icons';
-import { DirectiveResult } from './types';
+import type { DirectiveResult } from './types';
 
 export class CategoryTreeItem extends vscode.TreeItem {
     constructor(

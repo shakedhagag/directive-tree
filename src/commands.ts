@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
+// biome-ignore lint/style/useImportType: <explanation>
 import { CategoryTreeItem, FolderTreeItem, ExportedFunctionItem } from './tree-items';
-import { DirectiveTreeProvider } from './directive-tree-provider';
-import { DirectiveTreeItem } from './types';
+import type { DirectiveTreeProvider } from './directive-tree-provider';
+import type { DirectiveTreeItem } from './types';
 
 export function registerCommandsAndHandlers(
     context: vscode.ExtensionContext,

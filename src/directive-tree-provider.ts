@@ -1,16 +1,16 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
-import { DirectiveResult, DirectiveTreeItem } from './types';
+import * as path from 'node:path';
+import type { DirectiveResult, DirectiveTreeItem } from './types';
 import { CategoryTreeItem, FolderTreeItem, FileTreeItem, ExportedFunctionItem } from './tree-items';
 import * as ts from 'typescript';
 import { UnusedFunctionDetector } from './reference-provider';
 
 export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveTreeItem> {
     private expandedNodes: Set<string> = new Set();
-    private _onDidChangeTreeData: vscode.EventEmitter<DirectiveTreeItem | undefined | null | void> = new vscode.EventEmitter<DirectiveTreeItem | undefined | null | void>();
-    readonly onDidChangeTreeData: vscode.Event<DirectiveTreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
+    private _onDidChangeTreeData: vscode.EventEmitter<DirectiveTreeItem | undefined | null | undefined> = new vscode.EventEmitter<DirectiveTreeItem | undefined | null | undefined>();
+    readonly onDidChangeTreeData: vscode.Event<DirectiveTreeItem | undefined | null | undefined> = this._onDidChangeTreeData.event;
     private unusedFunctions: Set<string> = new Set();
-    private isAnalyzing: boolean = false;
+    private isAnalyzing = false;
 
     constructor(
         private results: DirectiveResult[],
@@ -74,18 +74,24 @@ export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveT
                 new CategoryTreeItem('use client', 'use-client', vscode.TreeItemCollapsibleState.Collapsed),
                 new CategoryTreeItem('use server', 'use-server', vscode.TreeItemCollapsibleState.Collapsed)
             ];
-        } else if (element instanceof CategoryTreeItem) {
+        }
+
+        if (element instanceof CategoryTreeItem) {
             const categoryResults = this.results.filter(r => r.directive === element.label);
             return this.buildFolderStructure(categoryResults, element.id);
-        } else if (element instanceof FolderTreeItem) {
+        }
+
+        if (element instanceof FolderTreeItem) {
             return element.children;
-        } else if (element instanceof FileTreeItem) {
+        }
+
+        if (element instanceof FileTreeItem) {
             // Scan for references when expanding a file item
             await this.scanReferencesForFile(element);
             return element.children;
-        } else {
-            return [];
         }
+
+        return [];
     }
 
     private async buildFolderStructure(results: DirectiveResult[], parentId: string): Promise<DirectiveTreeItem[]> {
@@ -184,7 +190,7 @@ export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveT
 
                 this.unusedFunctions = detector.getUnusedFunctions();
                 this.updateUnusedStatus();
-                this._onDidChangeTreeData.fire();
+                this._onDidChangeTreeData.fire(undefined);
 
                 if (processedFiles < files.length) {
                     vscode.window.showInformationMessage(`Analyzed ${processedFiles} out of ${files.length} files. Run the analysis again for more comprehensive results.`);
@@ -231,7 +237,7 @@ export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveT
             }
         }
 
-        this._onDidChangeTreeData.fire();
+        this._onDidChangeTreeData.fire(undefined);
     }
 
     private async parseFileForExportedFunctions(uri: vscode.Uri): Promise<ExportedFunctionItem[]> {
@@ -251,11 +257,11 @@ export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveT
             if (ts.isFunctionDeclaration(node) && node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)) {
                 this.addExportedFunction(node, node.name?.text, document, uri, exportedFunctions, isUseServerFile && isTsxFile);
             } else if (ts.isVariableStatement(node) && node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)) {
-                node.declarationList.declarations.forEach((declaration: ts.VariableDeclaration) => {
+                for (const declaration of node.declarationList.declarations) {
                     if (ts.isVariableDeclaration(declaration)) {
                         this.addExportedFunction(declaration, declaration.name.getText(), document, uri, exportedFunctions, isUseServerFile && isTsxFile);
                     }
-                });
+                }
             } else if (ts.isExportAssignment(node)) {
                 const expression = node.expression;
                 this.addExportedFunction(expression, undefined, document, uri, exportedFunctions, isUseServerFile && isTsxFile);
@@ -324,7 +330,7 @@ export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveT
         } else {
             this.expandedNodes.delete(element);
         }
-        this._onDidChangeTreeData.fire();
+        this._onDidChangeTreeData.fire(undefined);
     }
 
     public toggleItem(element: DirectiveTreeItem): void {
@@ -336,43 +342,49 @@ export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveT
 
     collapseAll(): void {
         this.expandedNodes.clear();
-        this._onDidChangeTreeData.fire();
+        this._onDidChangeTreeData.fire(undefined);
     }
 
     expandAll(): void {
         this.expandAllNodes(this.results);
-        this._onDidChangeTreeData.fire();
+        this._onDidChangeTreeData.fire(undefined);
     }
 
     private expandAllNodes(results: DirectiveResult[]): void {
         const expandAllNode = (nodeId: string) => {
             this.expandedNodes.add(nodeId);
-            const parts = nodeId.split('-');
+            const parts = nodeId.split("-");
             while (parts.length > 1) {
                 parts.pop();
-                this.expandedNodes.add(parts.join('-'));
+                this.expandedNodes.add(parts.join("-"));
             }
         };
 
-        results.forEach(result => {
-            const workspaceFolder = vscode.workspace.getWorkspaceFolder(result.uri);
+        for (const result of results) {
+            const workspaceFolder = vscode.workspace.getWorkspaceFolder(
+                result.uri,
+            );
             if (workspaceFolder) {
-                const relativePath = path.relative(workspaceFolder.uri.fsPath, path.dirname(result.uri.fsPath));
+                const relativePath = path.relative(
+                    workspaceFolder.uri.fsPath,
+                    path.dirname(result.uri.fsPath),
+                );
                 const pathParts = relativePath.split(path.sep);
 
-                let currentPath = '';
-                let currentParentId = result.directive === 'use client' ? 'use-client' : 'use-server';
+                let currentPath = "";
+                let currentParentId =
+                    result.directive === "use client" ? "use-client" : "use-server";
 
                 expandAllNode(currentParentId);
 
-                pathParts.forEach(part => {
+                for (const part of pathParts) {
                     currentPath = path.join(currentPath, part);
                     const folderId = `${currentParentId}-${currentPath}`;
                     expandAllNode(folderId);
                     currentParentId = folderId;
-                });
+                }
             }
-        });
+        }
     }
 
     public async findReferences(functionItem: {
@@ -464,11 +476,11 @@ export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveT
     }
 
     refresh(): void {
-        this._onDidChangeTreeData.fire();
+        this._onDidChangeTreeData.fire(undefined);
     }
 
     update(newResults: DirectiveResult[]): void {
         this.results = newResults;
-        this._onDidChangeTreeData.fire();
+        this._onDidChangeTreeData.fire(undefined);
     }
 }

@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
-import * as cp from 'child_process';
+import * as path from 'node:path';
+import * as cp from 'node:child_process';
 import { DirectiveTreeProvider } from './directive-tree-provider';
 import { registerCommandsAndHandlers } from './commands';
-import { DirectiveResult, DirectiveTreeItem } from './types';
+import type { DirectiveResult, DirectiveTreeItem } from './types';
 
 let directiveTreeView: vscode.TreeView<DirectiveTreeItem>;
 let treeDataProvider: DirectiveTreeProvider;
@@ -102,7 +102,9 @@ function search(options: { regex: string, globs?: string[], additional?: string,
         ];
 
         if (options.globs) {
-            options.globs.forEach(glob => args.push('-g', glob));
+            for (const glob of options.globs) {
+                args.push('-g', glob);
+            }
         }
 
         if (options.additional) {
@@ -119,7 +121,7 @@ function search(options: { regex: string, globs?: string[], additional?: string,
         });
 
         child.stderr.on('data', (data: Buffer) => {
-            console.error("Ripgrep error: " + data.toString());
+            console.error(`Ripgrep error:  ${data.toString()}`);
         });
 
         child.on('close', (code: number) => {
@@ -127,12 +129,12 @@ function search(options: { regex: string, globs?: string[], additional?: string,
                 reject(new Error(`Ripgrep process exited with code ${code}`));
             } else {
                 const matches = output.trim().split('\n').filter(line => line.length > 0);
-                matches.forEach(match => {
+                for (const match of matches) {
                     try {
                         // Find the last occurrence of .ts, .tsx, .js, or .jsx
                         const extensionMatch = match.match(/\.(ts|tsx|js|jsx)(?=:)/);
                         if (!extensionMatch) {
-                            return null;
+                            continue;
                         }
 
                         const extensionIndex = match.lastIndexOf(extensionMatch[0]);
@@ -157,8 +159,8 @@ function search(options: { regex: string, globs?: string[], additional?: string,
 
                         const result: DirectiveResult = {
                             uri: vscode.Uri.file(path.join(workspaceRoot, relativePath)),
-                            line: parseInt(line, 10),
-                            column: parseInt(col, 10),
+                            line: Number.parseInt(line, 10),
+                            column: Number.parseInt(col, 10),
                             match: matchText,
                             directive: matchText.includes('use server') ? 'use server' : 'use client'
                         };
@@ -166,7 +168,7 @@ function search(options: { regex: string, globs?: string[], additional?: string,
                     } catch (error) {
                         console.error("Failed to parse match:", match, error);
                     }
-                });
+                }
                 resolve();
             }
         });
@@ -175,12 +177,25 @@ function search(options: { regex: string, globs?: string[], additional?: string,
 
 async function refreshFile(document: vscode.TextDocument | undefined): Promise<void> {
     if (document) {
+        // Remove all results for the current file
         results = results.filter(result => result.uri.fsPath !== document.uri.fsPath);
 
         const folderPath = path.dirname(document.uri.fsPath);
-        await scanFolder(folderPath);
 
-        updateTreeView();
+        // Scan only the current file, not the entire folder
+        const options = {
+            regex: '"use server"|"use client"',
+            globs: ['*.{js,ts,jsx,tsx}'],
+            additional: '--hidden',
+            filename: document.uri.fsPath
+        };
+
+        try {
+            await search(options);
+            updateTreeView();
+        } catch (error) {
+            vscode.window.showErrorMessage(`Error refreshing file: ${error}`);
+        }
     }
 }
 
