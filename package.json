@@ -10,7 +10,7 @@
     "description": "See where you use 'use server' and 'use client' directives",
     "version": "0.2.2",
     "engines": {
-        "vscode": "^1.92.0"
+        "vscode": "^1.82.0"
     },
     "categories": [
         "Other"
