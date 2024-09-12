@@ -27,9 +27,9 @@ The Directive Tree extension for Visual Studio Code helps developers working wit
 <br/>
 <a href="https://marketplace.visualstudio.com/items?itemName=shagag.directive-tree" style="display: none;">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/shakedhagag/directive-tree/main/resources/example2.png" width="340">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/shakedhagag/directive-tree/main/resources/example2.png" width="340">
-    <img src="https://raw.githubusercontent.com/shakedhagag/directive-tree/main/resources/example2.png" alt="Logo">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/shakedhagag/directive-tree/main/resources/example2.png" width="auto">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/shakedhagag/directive-tree/main/resources/example2.png" width="auto">
+    <img src="https://raw.githubusercontent.com/shakedhagag/directive-tree/main/resources/example2.png" alt="Logo" width="auto">
   </picture>
 </a>
 
