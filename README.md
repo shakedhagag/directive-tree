@@ -12,6 +12,28 @@
 
 The Directive Tree extension for Visual Studio Code helps developers working with Next.js applications by providing a quick and easy way to visualize and navigate 'use client' and 'use server' directives in their codebase. This extension creates a tree view of these directives, organized by folders and files, making it easier to understand the client-server boundaries in your Next.js project.
 
+### Locate Server Actions
+<br/>
+<a href="https://marketplace.visualstudio.com/items?itemName=shagag.directive-tree" style="display: none;">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/shakedhagag/directive-tree/main/resources/example.png" width="240">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/shakedhagag/directive-tree/main/resources/example.png" width="240">
+    <img src="https://raw.githubusercontent.com/shakedhagag/directive-tree/main/resources/example.png" alt="Logo">
+  </picture>
+</a>
+<br/>
+### Find Unused Server Actions
+<br/>
+<a href="https://marketplace.visualstudio.com/items?itemName=shagag.directive-tree" style="display: none;">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/shakedhagag/directive-tree/main/resources/example2.png" width="140">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/shakedhagag/directive-tree/main/resources/example2.png" width="140">
+    <img src="https://raw.githubusercontent.com/shakedhagag/directive-tree/main/resources/example2.png" alt="Logo">
+  </picture>
+</a>
+
+<br/>
+
 ## Features
 
 - **Directive Scanning**: Automatically scans your workspace for 'use client' and 'use server' directives.
