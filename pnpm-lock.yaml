@@ -11,9 +11,6 @@ importers:
       '@vscode/ripgrep':
         specifier: ^1.15.9
         version: 1.15.9
-      comment-patterns:
-        specifier: ^0.12.2
-        version: 0.12.2
       fast-strftime:
         specifier: ^1.1.1
         version: 1.1.1
@@ -497,9 +494,6 @@ packages:
   commander@2.20.3:
     resolution: {integrity: sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==}
 
-  comment-patterns@0.12.2:
-    resolution: {integrity: sha512-yA1FeubMSK0MXzapPm1uNdxyGk0mTAn5qrsVS6uQUSDOpUgWVLCqsgZfA/lhRx6TCLr1MvxeRqXOb1peWXWg3Q==}
-
   concat-map@0.0.1:
     resolution: {integrity: sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg==}
 
@@ -915,9 +909,6 @@ packages:
 
   lodash.merge@4.6.2:
     resolution: {integrity: sha512-0KpjqXRVvrYyCsX1swR/XTK0va6VQkQM6MNo7PqW77ByjAhoARA8EfrP1N4+KlKj8YS0ZUCtRT/YUuhyYDujIQ==}
-
-  lodash@4.17.21:
-    resolution: {integrity: sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==}
 
   log-symbols@4.1.0:
     resolution: {integrity: sha512-8XPvpAA8uyhfteu8pIvQxpJZ7SYYdpUivZpGy6sFsBuKRY/7rQGavedeB8aK+Zkyq6upMFVL/9AW6vOYzfRyLg==}
@@ -1921,10 +1912,6 @@ snapshots:
 
   commander@2.20.3: {}
 
-  comment-patterns@0.12.2:
-    dependencies:
-      lodash: 4.17.21
-
   concat-map@0.0.1: {}
 
   convert-source-map@2.0.0: {}
@@ -2341,8 +2328,6 @@ snapshots:
       p-locate: 5.0.0
 
   lodash.merge@4.6.2: {}
-
-  lodash@4.17.21: {}
 
   log-symbols@4.1.0:
     dependencies:
