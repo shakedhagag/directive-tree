@@ -7,6 +7,7 @@ import strftime from 'fast-strftime';
 // @ts-ignore
 import commentPatterns from 'comment-patterns';
 import * as vscode from 'vscode';
+import * as fs from 'node:fs';
 
 import { colorNames, themeColorNames } from './lib';
 
@@ -271,4 +272,13 @@ export function getRegexSource() {
     }
 
     return regex;
+}
+
+export function fileExists(path: string): boolean {
+    try {
+        fs.accessSync(path, fs.constants.F_OK);
+        return true;
+    } catch (e) {
+        return false;
+    }
 }

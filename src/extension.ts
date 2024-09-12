@@ -4,6 +4,7 @@ import * as cp from 'node:child_process';
 import { DirectiveTreeProvider } from './directive-tree-provider';
 import { registerCommandsAndHandlers } from './commands';
 import type { DirectiveResult, DirectiveTreeItem } from './types';
+import { fileExists } from './utils';
 
 let directiveTreeView: vscode.TreeView<DirectiveTreeItem>;
 let treeDataProvider: DirectiveTreeProvider;
@@ -60,14 +61,18 @@ async function scanWorkspace(): Promise<void> {
     }
 
     try {
+
         for (const folder of workspaceFolders) {
+
             await scanFolder(folder.uri.fsPath);
         }
+
 
         updateTreeView();
         statusBarItem.text = `$(check) Found ${results.length} directive occurrences`;
         vscode.window.showInformationMessage(`Found ${results.length} directive occurrences`);
     } catch (error) {
+        console.error('Error during workspace scan:', error);
         vscode.window.showErrorMessage(`Error scanning workspace: ${error}`);
         statusBarItem.text = "$(error) Scan failed";
     }
@@ -84,13 +89,30 @@ async function scanFolder(folderPath: string): Promise<void> {
     try {
         await search(options);
     } catch (error) {
-        vscode.window.showErrorMessage(`Error scanning folder: ${error}`);
+        console.error(`Error scanning folder ${folderPath}:`, error);
+        throw error; // Re-throw the error to be caught in scanWorkspace
     }
 }
 
+
+
 function search(options: { regex: string, globs?: string[], additional?: string, filename: string }): Promise<void> {
+    let rgPath: string;
+    try {
+        const nodeModulesRgPath = path.join(__dirname, '..', 'node_modules', '@vscode', 'ripgrep', 'bin', `rg${process.platform === 'win32' ? '.exe' : ''}`);
+
+        rgPath = nodeModulesRgPath;
+
+        if (!fileExists(rgPath)) {
+            console.warn(`rgPath ${rgPath} does not exist, falling back to system 'rg'`);
+            rgPath = 'rg';
+        }
+    } catch (error) {
+        console.error('Error getting rgPath:', error);
+        rgPath = 'rg'; // Fallback to system-installed rg if there is one
+    }
+
     return new Promise((resolve, reject) => {
-        const rgPath = 'rg';
         const args = [
             '--no-messages',
             '--vimgrep',
@@ -115,17 +137,27 @@ function search(options: { regex: string, globs?: string[], additional?: string,
 
         const child = cp.spawn(rgPath, args, { cwd: path.dirname(options.filename) });
         let output = '';
+        let errorOutput = '';
+
 
         child.stdout.on('data', (data: Buffer) => {
             output += data.toString();
+
         });
 
         child.stderr.on('data', (data: Buffer) => {
+            errorOutput += data.toString();
             console.error(`Ripgrep error:  ${data.toString()}`);
+        });
+
+        child.on('error', (error) => {
+            console.error('Failed to start ripgrep process:', error);
+            reject(error);
         });
 
         child.on('close', (code: number) => {
             if (code !== 0) {
+
                 reject(new Error(`Ripgrep process exited with code ${code}`));
             } else {
                 const matches = output.trim().split('\n').filter(line => line.length > 0);
