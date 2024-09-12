@@ -1,10 +1,11 @@
 import * as vscode from 'vscode';
 import * as path from 'node:path';
 import * as cp from 'node:child_process';
+import * as fs from 'node:fs';
 import { DirectiveTreeProvider } from './directive-tree-provider';
 import { registerCommandsAndHandlers } from './commands';
 import type { DirectiveResult, DirectiveTreeItem } from './types';
-import { fileExists } from './utils';
+import { rgPath as vscodeRgPath } from '@vscode/ripgrep';
 
 let directiveTreeView: vscode.TreeView<DirectiveTreeItem>;
 let treeDataProvider: DirectiveTreeProvider;
@@ -43,7 +44,7 @@ export function activate(context: vscode.ExtensionContext) {
         treeDataProvider.expandAll();
     }).catch(error => {
         console.error('Error during initial workspace scan:', error);
-        vscode.window.showErrorMessage(`Error during initial workspace scan: ${error}`);
+        vscode.window.showErrorMessage(`Error during initial workspace scan: ${error.message}`);
     });
 }
 
@@ -62,19 +63,16 @@ async function scanWorkspace(): Promise<void> {
     }
 
     try {
-
         for (const folder of workspaceFolders) {
-
             await scanFolder(folder.uri.fsPath);
         }
-
 
         updateTreeView();
         statusBarItem.text = `$(check) Found ${results.length} directive occurrences`;
         vscode.window.showInformationMessage(`Found ${results.length} directive occurrences`);
     } catch (error) {
         console.error('Error during workspace scan:', error);
-        vscode.window.showErrorMessage(`Error scanning workspace: ${error}`);
+        vscode.window.showErrorMessage(`Error scanning workspace: ${error instanceof Error ? error.message : String(error)}`);
         statusBarItem.text = "$(error) Scan failed";
     }
 }
@@ -91,29 +89,39 @@ async function scanFolder(folderPath: string): Promise<void> {
         await search(options);
     } catch (error) {
         console.error(`Error scanning folder ${folderPath}:`, error);
-        throw error; // Re-throw the error to be caught in scanWorkspace
+        vscode.window.showWarningMessage(`Error scanning folder ${folderPath}: ${error instanceof Error ? error.message : String(error)}`);
     }
 }
 
-
-
-function search(options: { regex: string, globs?: string[], additional?: string, filename: string }): Promise<void> {
-    let rgPath: string;
+function getRipgrepPath(): string {
     try {
-        const nodeModulesRgPath = path.join(__dirname, '..', 'node_modules', '@vscode', 'ripgrep', 'bin', `rg${process.platform === 'win32' ? '.exe' : ''}`);
-
-        rgPath = nodeModulesRgPath;
-
-        if (!fileExists(rgPath)) {
-            console.warn(`rgPath ${rgPath} does not exist, falling back to system 'rg'`);
-            rgPath = 'rg';
+        const rgPath = vscodeRgPath;
+        if (rgPath) {
+            return rgPath;
         }
     } catch (error) {
-        console.error('Error getting rgPath:', error);
-        rgPath = 'rg'; // Fallback to system-installed rg if there is one
+        console.warn('Failed to load @vscode/ripgrep:', error);
     }
 
+    console.warn('Falling back to system rg');
+    return 'rg';
+}
+
+function search(options: { regex: string, globs?: string[], additional?: string, filename: string }): Promise<void> {
     return new Promise((resolve, reject) => {
+        let rgPath: string;
+        try {
+            rgPath = getRipgrepPath();
+            console.log('Using ripgrep from vscode-ripgrep:', rgPath);
+            if (!rgPath) {
+                vscode.window.showErrorMessage('Ripgrep not found. Please install ripgrep and make sure it\'s available in your PATH.');
+                throw new Error('Ripgrep not found');
+            }
+        } catch (error) {
+            reject(error);
+            return;
+        }
+
         const args = [
             '--no-messages',
             '--vimgrep',
@@ -140,82 +148,81 @@ function search(options: { regex: string, globs?: string[], additional?: string,
         let output = '';
         let errorOutput = '';
 
-
         child.stdout.on('data', (data: Buffer) => {
             output += data.toString();
-
         });
 
         child.stderr.on('data', (data: Buffer) => {
             errorOutput += data.toString();
-            console.error(`Ripgrep error:  ${data.toString()}`);
+            console.error(`Ripgrep error: ${data.toString()}`);
         });
 
         child.on('error', (error) => {
             console.error('Failed to start ripgrep process:', error);
-            reject(error);
+            reject(new Error(`Failed to start ripgrep process: ${error.message}`));
         });
 
         child.on('close', (code: number) => {
             if (code !== 0) {
-
-                reject(new Error(`Ripgrep process exited with code ${code}`));
+                reject(new Error(`Ripgrep process exited with code ${code}. Error: ${errorOutput}`));
             } else {
-                const matches = output.trim().split('\n').filter(line => line.length > 0);
-                for (const match of matches) {
-                    try {
-                        // Find the last occurrence of .ts, .tsx, .js, or .jsx
-                        const extensionMatch = match.match(/\.(ts|tsx|js|jsx)(?=:)/);
-                        if (!extensionMatch) {
-                            continue;
-                        }
-
-                        const extensionIndex = match.lastIndexOf(extensionMatch[0]);
-                        const filePath = match.slice(0, extensionIndex + extensionMatch[0].length);
-                        const remainingParts = match.slice(extensionIndex + extensionMatch[0].length + 1).split(':');
-
-                        if (remainingParts.length < 3) {
-                            throw new Error('Invalid match format');
-                        }
-
-                        const [line, col, ...restParts] = remainingParts;
-                        const matchText = restParts.join(':').trim();
-
-                        // Get the workspace root
-                        const workspaceRoot = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
-                        if (!workspaceRoot) {
-                            throw new Error('No workspace root found');
-                        }
-
-                        // Create a relative path
-                        const relativePath = path.relative(workspaceRoot, filePath);
-
-                        const result: DirectiveResult = {
-                            uri: vscode.Uri.file(path.join(workspaceRoot, relativePath)),
-                            line: Number.parseInt(line, 10),
-                            column: Number.parseInt(col, 10),
-                            match: matchText,
-                            directive: matchText.includes('use server') ? 'use server' : 'use client'
-                        };
-                        results.push(result);
-                    } catch (error) {
-                        console.error("Failed to parse match:", match, error);
-                    }
+                try {
+                    processSearchResults(output);
+                    resolve();
+                } catch (error) {
+                    reject(new Error(`Error processing search results: ${error instanceof Error ? error.message : String(error)}`));
                 }
-                resolve();
             }
         });
     });
 }
 
+function processSearchResults(output: string): void {
+    const matches = output.trim().split('\n').filter(line => line.length > 0);
+    for (const match of matches) {
+        try {
+            const extensionMatch = match.match(/\.(ts|tsx|js|jsx)(?=:)/);
+            if (!extensionMatch) {
+                continue;
+            }
+
+            const extensionIndex = match.lastIndexOf(extensionMatch[0]);
+            const filePath = match.slice(0, extensionIndex + extensionMatch[0].length);
+            const remainingParts = match.slice(extensionIndex + extensionMatch[0].length + 1).split(':');
+
+            if (remainingParts.length < 3) {
+                throw new Error('Invalid match format');
+            }
+
+            const [line, col, ...restParts] = remainingParts;
+            const matchText = restParts.join(':').trim();
+
+            const workspaceRoot = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+            if (!workspaceRoot) {
+                throw new Error('No workspace root found');
+            }
+
+            const relativePath = path.relative(workspaceRoot, filePath);
+
+            const result: DirectiveResult = {
+                uri: vscode.Uri.file(path.join(workspaceRoot, relativePath)),
+                line: Number.parseInt(line, 10),
+                column: Number.parseInt(col, 10),
+                match: matchText,
+                directive: matchText.includes('use server') ? 'use server' : 'use client'
+            };
+            results.push(result);
+        } catch (error) {
+            console.error("Failed to parse match:", match, error);
+            vscode.window.showWarningMessage(`Failed to parse a search result. Some results may be missing.`);
+        }
+    }
+}
+
 async function refreshFile(document: vscode.TextDocument | undefined): Promise<void> {
     if (document) {
-        // Remove all results for the current file
         results = results.filter(result => result.uri.fsPath !== document.uri.fsPath);
 
-        const folderPath = path.dirname(document.uri.fsPath);
-
-        // Scan only the current file, not the entire folder
         const options = {
             regex: '"use server"|"use client"',
             globs: ['*.{js,ts,jsx,tsx}'],
@@ -227,7 +234,8 @@ async function refreshFile(document: vscode.TextDocument | undefined): Promise<v
             await search(options);
             updateTreeView();
         } catch (error) {
-            vscode.window.showErrorMessage(`Error refreshing file: ${error}`);
+            console.error('Error refreshing file:', error);
+            vscode.window.showErrorMessage(`Error refreshing file: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 }
