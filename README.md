@@ -16,18 +16,19 @@ The Directive Tree extension for Visual Studio Code helps developers working wit
 <br/>
 <a href="https://marketplace.visualstudio.com/items?itemName=shagag.directive-tree" style="display: none;">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/shakedhagag/directive-tree/main/resources/example.png" width="240">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/shakedhagag/directive-tree/main/resources/example.png" width="240">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/shakedhagag/directive-tree/main/resources/example.png" width="340">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/shakedhagag/directive-tree/main/resources/example.png" width="340">
     <img src="https://raw.githubusercontent.com/shakedhagag/directive-tree/main/resources/example.png" alt="Logo">
   </picture>
 </a>
 <br/>
+
 ### Find Unused Server Actions
 <br/>
 <a href="https://marketplace.visualstudio.com/items?itemName=shagag.directive-tree" style="display: none;">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/shakedhagag/directive-tree/main/resources/example2.png" width="140">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/shakedhagag/directive-tree/main/resources/example2.png" width="140">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/shakedhagag/directive-tree/main/resources/example2.png" width="340">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/shakedhagag/directive-tree/main/resources/example2.png" width="340">
     <img src="https://raw.githubusercontent.com/shakedhagag/directive-tree/main/resources/example2.png" alt="Logo">
   </picture>
 </a>
