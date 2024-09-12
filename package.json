@@ -28,32 +28,6 @@
                 "title": "Refresh directives scan"
             },
             {
-                "command": "directive-tree.minimizeTree",
-                "title": "Collapse All",
-                "category": "Directive Tree",
-                "icon": "$(collapse-all)"
-            },
-            {
-                "command": "directive-tree.expandTree",
-                "title": "Expand All",
-                "category": "Directive Tree",
-                "icon": "$(expand-all)"
-            },
-            {
-                "command": "directive-tree.toggleItem",
-                "title": "Open folder",
-                "category": "Directive Tree",
-                "icon": "$(file-code)"
-            },
-            {
-                "command": "directive-tree.expandFolder",
-                "title": "Expand Folder"
-            },
-            {
-                "command": "directive-tree.collapseFolder",
-                "title": "Collapse Folder"
-            },
-            {
                 "command": "directive-tree.findReferences",
                 "title": "Find References"
             }
@@ -78,36 +52,9 @@
         "menus": {
             "view/item/context": [
                 {
-                    "command": "directive-tree.minimizeTree",
-                    "group": "navigation",
-                    "when": "view == directiveTreeView"
-                },
-                {
-                    "command": "directive-tree.expandTree",
-                    "group": "navigation",
-                    "when": "view == directiveTreeView"
-                },
-                {
-                    "command": "directive-tree.toggleItem",
-                    "when": "view == directiveTreeView && viewItem == file",
-                    "group": "inline"
-                },
-                {
                     "command": "directive-tree.findReferences",
                     "when": "view == directiveTreeView && viewItem == exportedFunction",
                     "group": "inline"
-                }
-            ],
-            "view/title": [
-                {
-                    "command": "directive-tree.minimizeTree",
-                    "when": "view == directiveTreeView",
-                    "group": "navigation"
-                },
-                {
-                    "command": "directive-tree.expandTree",
-                    "when": "view == directiveTreeView",
-                    "group": "navigation"
                 }
             ]
         },

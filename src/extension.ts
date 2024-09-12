@@ -23,7 +23,8 @@ export function activate(context: vscode.ExtensionContext) {
 
     treeDataProvider = new DirectiveTreeProvider(results, context, workspaceRoot);
     directiveTreeView = vscode.window.createTreeView('directiveTreeView', {
-        treeDataProvider: treeDataProvider
+        treeDataProvider: treeDataProvider,
+        showCollapseAll: true
     });
     statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
     statusBarItem.show();
