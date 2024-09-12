@@ -2,6 +2,20 @@
 
 All notable changes to the "Directive Tree" extension will be documented in this file.
 
+## Version 0.3.2 (2024-09-12)
+
+### Added
+ - VSCode's native collapse all functionality for the tree view.
+ - Now using @vscode/ripgrep first, and fallback to machine's ripgrep if needed (this would ensure users without ripgrep installed will not have issues running this extension)
+
+### Changed
+- Removed custom expand all and collapse all functionalities.
+- Removed unused code related to manual expand/collapse state management.
+- Simplified DirectiveTreeProvider class for better performance.
+- Improved tree view rendering and state management.
+- Removed unnecessary expand/collapse related methods from DirectiveTreeProvider.
+- Simplified getTreeItem and getChildren methods.
+
 ## [0.3.0] - 2024-09-10
 
 ### Added
