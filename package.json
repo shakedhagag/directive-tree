@@ -8,7 +8,7 @@
     "icon": "resources/icon.png",
     "displayName": "Directive Tree",
     "description": "See where you use 'use server' and 'use client' directives",
-    "version": "0.3.3",
+    "version": "0.3.4",
     "engines": {
         "vscode": "^1.80.0"
     },
@@ -85,7 +85,8 @@
         "lint": "eslint src --ext ts",
         "test": "vscode-test",
         "post-package": "pnpm vsce package --no-dependencies",
-        "publish": "pnpm vsce publish --no-dependencies"
+        "publish": "pnpm vsce publish --no-dependencies",
+        "postinstall": "node ./node_modules/@vscode/ripgrep/lib/postinstall.js"
     },
     "devDependencies": {
         "@types/find": "^0.2.4",

@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
 import * as path from 'node:path';
-import * as cp from 'node:child_process';
 import * as fs from 'node:fs';
+const ripgrep = require('./ripgrep');
 import { DirectiveTreeProvider } from './directive-tree-provider';
 import { registerCommandsAndHandlers } from './commands';
 import type { DirectiveResult, DirectiveTreeItem } from './types';
-import { rgPath as vscodeRgPath } from '@vscode/ripgrep';
+import * as cp from 'node:child_process';
 
 let directiveTreeView: vscode.TreeView<DirectiveTreeItem>;
 let treeDataProvider: DirectiveTreeProvider;
@@ -94,17 +94,41 @@ async function scanFolder(folderPath: string): Promise<void> {
 }
 
 function getRipgrepPath(): string {
+    const rgPath = path.join(__dirname, '..', 'node_modules', '@vscode', 'ripgrep', 'bin', 'rg');
+    console.log('Checking for ripgrep at:', rgPath);
+    if (fs.existsSync(rgPath)) {
+        console.log('Using bundled ripgrep:', rgPath);
+        return rgPath;
+    }
+    console.warn('Bundled ripgrep not found. Falling back to system rg');
+    return 'rg';
+}
+
+async function searchForDirectives(folderPath: string): Promise<void> {
+    const rgPath = getRipgrepPath();
+    const regex = '"use (server|client)"';
+    
     try {
-        const rgPath = vscodeRgPath;
-        if (rgPath) {
-            return rgPath;
+        const results = await ripgrep.search(folderPath, {
+            regex: regex,
+            rgPath: rgPath,
+            additional: '--hidden',
+            multiline: false
+        });
+
+        for (const match of results) {
+            // Process each match
+            console.log(`File: ${match.fsPath}, Line: ${match.line}, Column: ${match.column}, Match: ${match.match}`);
+            // Add to your tree view or process as needed
         }
     } catch (error) {
-        console.warn('Failed to load @vscode/ripgrep:', error);
+        console.error('Error searching for directives:', error);
+        if (error instanceof Error) {
+            vscode.window.showErrorMessage(`Error searching for directives: ${error.message}`);
+        } else {
+            vscode.window.showErrorMessage('An unknown error occurred while searching for directives');
+        }
     }
-
-    console.warn('Falling back to system rg');
-    return 'rg';
 }
 
 function search(options: { regex: string, globs?: string[], additional?: string, filename: string }): Promise<void> {
@@ -112,12 +136,10 @@ function search(options: { regex: string, globs?: string[], additional?: string,
         let rgPath: string;
         try {
             rgPath = getRipgrepPath();
-            console.log('Using ripgrep from vscode-ripgrep:', rgPath);
-            if (!rgPath) {
-                vscode.window.showErrorMessage('Ripgrep not found. Please install ripgrep and make sure it\'s available in your PATH.');
-                throw new Error('Ripgrep not found');
-            }
+            console.log('Using ripgrep from:', rgPath);
         } catch (error) {
+            console.error('Error getting ripgrep path:', error);
+            vscode.window.showErrorMessage('Ripgrep not found. Please install ripgrep or reinstall the extension.');
             reject(error);
             return;
         }
@@ -156,7 +178,6 @@ function search(options: { regex: string, globs?: string[], additional?: string,
             errorOutput += data.toString();
             console.error(`Ripgrep error: ${data.toString()}`);
         });
-
         child.on('error', (error) => {
             console.error('Failed to start ripgrep process:', error);
             reject(new Error(`Failed to start ripgrep process: ${error.message}`));
@@ -214,7 +235,7 @@ function processSearchResults(output: string): void {
             results.push(result);
         } catch (error) {
             console.error("Failed to parse match:", match, error);
-            vscode.window.showWarningMessage(`Failed to parse a search result. Some results may be missing.`);
+            vscode.window.showWarningMessage('Failed to parse a search result. Some results may be missing.');
         }
     }
 }
