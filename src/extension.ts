@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
-const ripgrep = require('./ripgrep');
 import { DirectiveTreeProvider } from './directive-tree-provider';
 import { registerCommandsAndHandlers } from './commands';
 import type { DirectiveResult, DirectiveTreeItem } from './types';
@@ -50,6 +49,14 @@ export function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {
     // Clean up resources if needed
+    if (statusBarItem) {
+        statusBarItem.dispose();
+    }
+    if (directiveTreeView) {
+        directiveTreeView.dispose();
+    }
+    // Clear the results array
+    results = [];
 }
 
 async function scanWorkspace(): Promise<void> {
@@ -114,32 +121,6 @@ function getRipgrepPath(): string {
     return 'rg';
 }
 
-async function searchForDirectives(folderPath: string): Promise<void> {
-    const rgPath = getRipgrepPath();
-    const regex = '"use (server|client)"';
-    
-    try {
-        const results = await ripgrep.search(folderPath, {
-            regex: regex,
-            rgPath: rgPath,
-            additional: '--hidden',
-            multiline: false
-        });
-
-        for (const match of results) {
-            // Process each match
-            console.log(`File: ${match.fsPath}, Line: ${match.line}, Column: ${match.column}, Match: ${match.match}`);
-            // Add to your tree view or process as needed
-        }
-    } catch (error) {
-        console.error('Error searching for directives:', error);
-        if (error instanceof Error) {
-            vscode.window.showErrorMessage(`Error searching for directives: ${error.message}`);
-        } else {
-            vscode.window.showErrorMessage('An unknown error occurred while searching for directives');
-        }
-    }
-}
 
 function search(options: { regex: string, globs?: string[], additional?: string, filename: string }): Promise<void> {
     return new Promise((resolve, reject) => {
