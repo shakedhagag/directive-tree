@@ -1,6 +1,6 @@
 import type { Uri } from "vscode";
 
-import { CategoryTreeItem, FolderTreeItem, FileTreeItem, ExportedFunctionItem } from "./tree-items";
+import type { CategoryTreeItem, FolderTreeItem, FileTreeItem, ExportedFunctionItem } from "./tree-items";
 
 export type DirectiveTreeItem = CategoryTreeItem | FolderTreeItem | FileTreeItem | ExportedFunctionItem;
 

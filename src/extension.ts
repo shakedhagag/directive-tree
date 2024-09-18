@@ -94,11 +94,21 @@ async function scanFolder(folderPath: string): Promise<void> {
 }
 
 function getRipgrepPath(): string {
-    const rgPath = path.join(__dirname, '..', 'node_modules', '@vscode', 'ripgrep', 'bin', 'rg');
-    console.log('Checking for ripgrep at:', rgPath);
-    if (fs.existsSync(rgPath)) {
-        console.log('Using bundled ripgrep:', rgPath);
-        return rgPath;
+    const isWin = /^win/.test(process.platform);
+    const exeName = isWin ? 'rg.exe' : 'rg';
+    const appRootUri = vscode.Uri.parse(vscode.env.appRoot);
+
+    const paths = [
+        vscode.Uri.joinPath(appRootUri, 'node_modules/vscode-ripgrep/bin/', exeName),
+        vscode.Uri.joinPath(appRootUri, 'node_modules.asar.unpacked/vscode-ripgrep/bin/', exeName),
+        vscode.Uri.joinPath(appRootUri, 'node_modules/@vscode/ripgrep/bin/', exeName),
+        vscode.Uri.joinPath(appRootUri, 'node_modules.asar.unpacked/@vscode/ripgrep/bin/', exeName)
+    ];
+
+    for (const path of paths) {
+        if (fs.existsSync(path.fsPath)) {
+            return path.fsPath;
+        }
     }
     console.warn('Bundled ripgrep not found. Falling back to system rg');
     return 'rg';
