@@ -6,10 +6,11 @@ import { CategoryTreeItem, FolderTreeItem, FileTreeItem, ExportedFunctionItem } 
 import { UnusedFunctionDetector } from './reference-provider';
 
 export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveTreeItem> {
-    private _onDidChangeTreeData: vscode.EventEmitter<DirectiveTreeItem | undefined | null | void> = new vscode.EventEmitter<DirectiveTreeItem | undefined | null | void>();
-    readonly onDidChangeTreeData: vscode.Event<DirectiveTreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
+    private _onDidChangeTreeData: vscode.EventEmitter<DirectiveTreeItem | undefined | null > = new vscode.EventEmitter<DirectiveTreeItem | undefined | null >();
+    readonly onDidChangeTreeData: vscode.Event<DirectiveTreeItem | undefined | null > = this._onDidChangeTreeData.event;
+    private updateDebounceTimer: NodeJS.Timeout | undefined;
+    private isUpdating= false;
 
-    private isAllExpanded: boolean = false;
     private unusedFunctions: Set<string> = new Set();
     private isAnalyzing = false;
 
@@ -58,7 +59,7 @@ export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveT
         for (const func of exportedFunctions) {
             const references = await this.findReferencesForFunction(func, document);
             const isUnused = references.length <= 1; // Consider function unused if it only has its own declaration as a reference
-            functionItems.push(new ExportedFunctionItem(func.label, func.range, func.uri, isUnused));
+            functionItems.push(new ExportedFunctionItem(func.label, func.range, func.uri, isUnused, func.neverUnused));
         }
 
         // Update the file item's children
@@ -189,40 +190,7 @@ export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveT
         });
     }
 
-    private async updateUnusedStatus(): Promise<void> {
-        const updateFileItem = async (item: DirectiveTreeItem) => {
-            if (item instanceof FileTreeItem) {
-                for (const child of item.children) {
-                    if (child instanceof ExportedFunctionItem) {
-                        const fullyQualifiedName = this.getFullyQualifiedName(child.uri, child.label);
-                        child.isUnused = !child.neverUnused && this.unusedFunctions.has(fullyQualifiedName);
-                        child.updateIconAndTooltip();
-                    }
-                }
-            } else if (item instanceof FolderTreeItem) {
-                for (const child of item.children) {
-                    await updateFileItem(child);
-                }
-            }
-        };
 
-        for (const result of this.results) {
-            const rootItem = await this.getChildren() as (CategoryTreeItem | undefined)[];
-            const categoryItem = rootItem.find(item =>
-                (item?.label === 'use client' && result.directive === 'use client') ||
-                (item?.label === 'use server' && result.directive === 'use server')
-            );
-
-            if (categoryItem) {
-                const categoryChildren = await this.getChildren(categoryItem);
-                for (const child of categoryChildren) {
-                    await updateFileItem(child);
-                }
-            }
-        }
-
-        this._onDidChangeTreeData.fire();
-    }
 
     private async parseFileForExportedFunctions(uri: vscode.Uri): Promise<ExportedFunctionItem[]> {
         const document = await vscode.workspace.openTextDocument(uri);
@@ -302,11 +270,6 @@ export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveT
         return `${relativePath}:${functionName}`;
     }
 
-    public expandAll(): void {
-        this.isAllExpanded = true;
-        this._onDidChangeTreeData.fire();
-    }
-
     public async findReferences(functionItem: {
         label: string,
         range: vscode.Range,
@@ -329,50 +292,86 @@ export class DirectiveTreeProvider implements vscode.TreeDataProvider<DirectiveT
                     functionItem.range.start
                 );
 
-                if (references && references.length > 0) {
-                    // Check if the only reference is the declaration itself
-                    if (references.length === 1 && !functionItem.neverUnused) {
-                        vscode.window.showInformationMessage(`No references found for ${functionName} other than its declaration.`);
-                        // Update unused status
-                        const fullyQualifiedName = this.getFullyQualifiedName(functionUri, functionName);
-                        this.unusedFunctions.add(fullyQualifiedName);
-                        functionItem.isUnused = true;
-                    } else {
-                        // Filter out the declaration itself for display
-                        const externalReferences = references.filter(ref =>
-                            !(ref.uri.fsPath === functionUri.fsPath && ref.range.isEqual(functionItem.range))
-                        );
+                let statusChanged = false;
 
-                        if (externalReferences.length > 0 || functionItem.neverUnused) {
-                            this.showReferencesQuickPick(functionName, externalReferences);
-                            // Update unused status
-                            const fullyQualifiedName = this.getFullyQualifiedName(functionUri, functionName);
-                            this.unusedFunctions.delete(fullyQualifiedName);
-                            functionItem.isUnused = false;
-                        } else {
-                            vscode.window.showInformationMessage(`No external references found for ${functionName}.`);
-                            // Update unused status
-                            const fullyQualifiedName = this.getFullyQualifiedName(functionUri, functionName);
-                            this.unusedFunctions.add(fullyQualifiedName);
-                            functionItem.isUnused = true;
-                        }
+                if (references && references.length > 0) {
+                    const externalReferences = references.filter(ref =>
+                        !(ref.uri.fsPath === functionUri.fsPath && ref.range.isEqual(functionItem.range))
+                    );
+
+                    if (externalReferences.length === 0 && !functionItem.neverUnused) {
+                        vscode.window.showInformationMessage(`No references found for ${functionName} other than its declaration.`);
+                        statusChanged = this.markAsUnused(functionItem);
+                    } else {
+                        await this.showReferencesQuickPeek(functionName, externalReferences);
+                        statusChanged = this.markAsUsed(functionItem);
                     }
                 } else if (!functionItem.neverUnused) {
                     vscode.window.showInformationMessage(`No references found for ${functionName}`);
-                    // Update unused status
-                    const fullyQualifiedName = this.getFullyQualifiedName(functionUri, functionName);
-                    this.unusedFunctions.add(fullyQualifiedName);
-                    functionItem.isUnused = true;
+                    statusChanged = this.markAsUnused(functionItem);
                 }
 
-                this.updateUnusedStatus();
+                if (statusChanged) {
+                    this.queueUpdate();
+                }
             } catch (error) {
                 vscode.window.showErrorMessage(`Error finding references: ${error}`);
             }
         });
     }
 
-    private async showReferencesQuickPick(functionName: string, references: vscode.Location[]): Promise<void> {
+    private markAsUnused(functionItem: { label: string, uri: vscode.Uri, isUnused: boolean }) {
+        if (!functionItem.isUnused) {
+            const fullyQualifiedName = this.getFullyQualifiedName(functionItem.uri, functionItem.label);
+            this.unusedFunctions.add(fullyQualifiedName);
+            functionItem.isUnused = true;
+            return true;
+        }
+        return false;
+    }
+
+    private markAsUsed(functionItem: { label: string, uri: vscode.Uri, isUnused: boolean }) {
+        if (functionItem.isUnused) {
+            const fullyQualifiedName = this.getFullyQualifiedName(functionItem.uri, functionItem.label);
+            this.unusedFunctions.delete(fullyQualifiedName);
+            functionItem.isUnused = false;
+            return true;
+        }
+        return false;
+    }
+
+    private queueUpdate(): void {
+        if (this.updateDebounceTimer) {
+            clearTimeout(this.updateDebounceTimer);
+        }
+
+        this.updateDebounceTimer = setTimeout(() => {
+            if (!this.isUpdating) {
+                this.updateUnusedStatus();
+            }
+        }, 500);
+    }
+
+    private async updateUnusedStatus(): Promise<void> {
+        if (this.isUpdating) {
+            return;
+        }
+
+        this.isUpdating = true;
+        try {
+            this._onDidChangeTreeData.fire(undefined);
+            await new Promise(resolve => setTimeout(resolve, 100)); // Small delay to allow UI update
+        } finally {
+            this.isUpdating = false;
+        }
+    }
+
+    private async showReferencesQuickPeek(functionName: string, references: vscode.Location[]): Promise<void> {
+        if (references.length === 0) {
+            vscode.window.showInformationMessage(`No external references found for ${functionName}.`);
+            return;
+        }
+
         const items: vscode.QuickPickItem[] = await Promise.all(references.map(async (ref) => {
             const document = await vscode.workspace.openTextDocument(ref.uri);
             const range = document.getWordRangeAtPosition(ref.range.start) || ref.range;

@@ -39,9 +39,7 @@ export function activate(context: vscode.ExtensionContext) {
         onDocumentSave,
         onConfigurationChange
     );
-    scanWorkspace().then(() => {
-        treeDataProvider.expandAll();
-    }).catch(error => {
+    scanWorkspace().catch(error => {
         console.error('Error during initial workspace scan:', error);
         vscode.window.showErrorMessage(`Error during initial workspace scan: ${error.message}`);
     });
@@ -135,6 +133,13 @@ function search(options: { regex: string, globs?: string[], additional?: string,
             return;
         }
 
+        // Check if the file exists and is accessible
+        if (!fs.existsSync(options.filename)) {
+            console.error(`File not found: ${options.filename}`);
+            reject(new Error(`File not found: ${options.filename}`));
+            return;
+        }
+
         const args = [
             '--no-messages',
             '--vimgrep',
@@ -157,6 +162,8 @@ function search(options: { regex: string, globs?: string[], additional?: string,
 
         args.push(options.filename);
 
+        console.log('Executing ripgrep with args:', args.join(' '));
+
         const child = cp.spawn(rgPath, args, { cwd: path.dirname(options.filename) });
         let output = '';
         let errorOutput = '';
@@ -169,6 +176,7 @@ function search(options: { regex: string, globs?: string[], additional?: string,
             errorOutput += data.toString();
             console.error(`Ripgrep error: ${data.toString()}`);
         });
+
         child.on('error', (error) => {
             console.error('Failed to start ripgrep process:', error);
             reject(new Error(`Failed to start ripgrep process: ${error.message}`));
@@ -176,7 +184,25 @@ function search(options: { regex: string, globs?: string[], additional?: string,
 
         child.on('close', (code: number) => {
             if (code !== 0) {
-                reject(new Error(`Ripgrep process exited with code ${code}. Error: ${errorOutput}`));
+                console.error(`Ripgrep process exited with code ${code}. Error: ${errorOutput}`);
+                // Implement a fallback mechanism here if needed
+                // For example, you could use a simple regex search on the file contents
+                vscode.workspace.openTextDocument(options.filename).then(document => {
+                    const text = document.getText();
+                    const regex = new RegExp(options.regex, 'g');
+                    let match: RegExpExecArray | null;
+                    while (true) {
+                        match = regex.exec(text);
+                        if (match === null) {break;}
+                        const position = document.positionAt(match.index);
+                        const line = position.line + 1;
+                        const column = position.character + 1;
+                        output += `${options.filename}:${line}:${column}:${match[0]}\n`;
+                    }
+                    
+                    processSearchResults(output);
+                    resolve();
+                });
             } else {
                 try {
                     processSearchResults(output);
@@ -247,7 +273,24 @@ async function refreshFile(document: vscode.TextDocument | undefined): Promise<v
             updateTreeView();
         } catch (error) {
             console.error('Error refreshing file:', error);
-            vscode.window.showErrorMessage(`Error refreshing file: ${error instanceof Error ? error.message : String(error)}`);
+            
+            // Check if the error is related to the Cursor editor's file sync
+            if (error instanceof Error && error.message.includes('Client not initialized')) {
+                console.log('Cursor file sync error detected. Retrying after a short delay...');
+                
+                // Retry after a short delay
+                setTimeout(async () => {
+                    try {
+                        await search(options);
+                        updateTreeView();
+                    } catch (retryError) {
+                        console.error('Error on retry:', retryError);
+                        vscode.window.showErrorMessage(`Error refreshing file: ${retryError instanceof Error ? retryError.message : String(retryError)}`);
+                    }
+                }, 1000); // 1 second delay
+            } else {
+                vscode.window.showErrorMessage(`Error refreshing file: ${error instanceof Error ? error.message : String(error)}`);
+            }
         }
     }
 }

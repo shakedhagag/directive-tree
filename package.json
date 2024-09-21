@@ -8,7 +8,7 @@
     "icon": "resources/icon.png",
     "displayName": "Directive Tree",
     "description": "See where you use 'use server' and 'use client' directives",
-    "version": "0.3.5",
+    "version": "0.3.6",
     "engines": {
         "vscode": "^1.80.0"
     },
@@ -29,7 +29,8 @@
             },
             {
                 "command": "directive-tree.findReferences",
-                "title": "Find References"
+                "title": "Find References",
+                "when": "view == directiveTreeView && viewItem == exportedFunction"
             }
         ],
         "viewsContainers": {

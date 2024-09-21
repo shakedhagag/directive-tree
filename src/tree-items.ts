@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
+import * as path from 'node:path';
 import * as icons from './icons';
 import type { DirectiveResult } from './types';
 
@@ -64,7 +64,7 @@ export class ExportedFunctionItem extends vscode.TreeItem {
         public readonly neverUnused: boolean = false
     ) {
         super(label, vscode.TreeItemCollapsibleState.None);
-        this.contextValue = 'exportedFunction';
+        this.contextValue = this.isUnused ? 'unusedFunction' : 'exportedFunction';
         this.command = this.createCommand();
         this.updateIconAndTooltip();
     }
