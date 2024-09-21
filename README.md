@@ -1,5 +1,4 @@
-> **_RIPGREP ERROR:_**  looks like @vscode/ripgrep does not load for everyone, if you get an error about ripgrep, you can install it directly on your machine, it's usefull either way (`brew install ripgrep` on mac, or head here: [ripgrep](https://github.com/BurntSushi/ripgrep?tab=readme-ov-file#installation))
-
+> **_RIPGREP ERROR:_** If you get an error about ripgrep, you can install it directly on your machine. It's useful either way (`brew install ripgrep` on Mac, or head here: [ripgrep](https://github.com/BurntSushi/ripgrep?tab=readme-ov-file#installation))
 
 <a href="https://marketplace.visualstudio.com/items?itemName=shagag.directive-tree" style="display: none;">
   <picture>
@@ -16,6 +15,7 @@
 The Directive Tree extension for Visual Studio Code helps developers working with Next.js applications by providing a quick and easy way to visualize and navigate 'use client' and 'use server' directives in their codebase. This extension creates a tree view of these directives, organized by folders and files, making it easier to understand the client-server boundaries in your Next.js project.
 
 ### Locate Server Actions
+
 <br/>
 <a href="https://marketplace.visualstudio.com/items?itemName=shagag.directive-tree" style="display: none;">
   <picture>
@@ -27,6 +27,7 @@ The Directive Tree extension for Visual Studio Code helps developers working wit
 <br/>
 
 ### Find Unused Server Actions
+
 <br/>
 <a href="https://marketplace.visualstudio.com/items?itemName=shagag.directive-tree" style="display: none;">
   <picture>
@@ -67,14 +68,11 @@ The Directive Tree extension for Visual Studio Code helps developers working wit
 
 - `Directive Tree: Scan Directives`: Scans the entire workspace for directives.
 - `Directive Tree: Refresh Directives`: Refreshes the directives for the currently active file.
-- `Directive Tree: Minimize Tree`: Collapses all folders in the tree view.
-- `Directive Tree: Expand Tree`: Expands all folders in the tree view.
 - `Directive Tree: Find References`: Finds references for a selected exported function.
 
 ## Configuration
 
 - `directiveTree.showOnStartup`: (boolean, default: true) Show Directive Tree on startup.
-- `directive-tree.tree.buttons.minimize`: (boolean, default: true) Show the minimize button in the directive tree view.
 
 ## Requirements
 

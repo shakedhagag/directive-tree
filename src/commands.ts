@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 // biome-ignore lint/style/useImportType: <explanation>
-import { CategoryTreeItem, FolderTreeItem, ExportedFunctionItem } from './tree-items';
+import { ExportedFunctionItem } from './tree-items';
 import type { DirectiveTreeProvider } from './directive-tree-provider';
 import type { DirectiveTreeItem } from './types';
 
@@ -21,16 +21,11 @@ export function registerCommandsAndHandlers(
         vscode.commands.registerCommand('directive-tree.refreshDirectives', () => {
             refreshFile(vscode.window.activeTextEditor?.document);
         }),
-
-        // vscode.commands.registerCommand('directive-tree.expandAll', () => {
-        //     treeDataProvider.expandAll();
-        // }),
         vscode.commands.registerCommand('directive-tree.findReferences', (functionItem: ExportedFunctionItem) => {
             treeDataProvider.findReferences(functionItem);
         }),
         vscode.workspace.onDidSaveTextDocument(onDocumentSave),
         vscode.workspace.onDidChangeConfiguration(onConfigurationChange),
-
 
         directiveTreeView.onDidChangeVisibility(event => {
             if (event.visible) {
